@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.urls import path
 
-from api.views import UserView, retrieve_posts, add_post, auth_login
+import api.views as Api
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/users', UserView.as_view()),
-    path('api/posts', retrieve_posts),
-    path('api/posts/add', add_post),
-    path('api/auth/login', auth_login),
+    path('api/users', Api.UserView.as_view()),
+    path('api/auth/register', Api.RegisterView.as_view()),
+    path('api/posts', Api.retrieve_posts),
+    path('api/posts/add', Api.PostAddView.as_view()),
+    path('api/posts/update', Api.PostUpdateView.as_view()),
 ]
