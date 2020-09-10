@@ -2,6 +2,7 @@ from django.db import models
 from rest_framework.authtoken.models import Token
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from twd_backend import settings
 
 import datetime
 
@@ -14,7 +15,7 @@ class User(models.Model):
     full_name = models.CharField(max_length=70)
     email = models.EmailField(max_length=254)
     password = models.CharField(max_length=254)
-    is_active = models.BooleanField(default=0)
+    is_active = models.BooleanField(default=1)
     is_authenticated = models.BooleanField(default=1)
     bio = models.TextField(max_length=1000, default="")
     created_at = models.DateField(auto_now_add=True)
@@ -43,6 +44,7 @@ class Tag(models.Model):
 class Post(models.Model):
     owner = models.ForeignKey(User, related_name="posts", on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
+    image = models.FileField(upload_to="", null=True)
     description = models.TextField(max_length=1000)
     requirements = models.TextField(max_length=1000)
     category = models.ForeignKey(Category, related_name="posts", on_delete=models.CASCADE)
@@ -51,7 +53,6 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
-
 
 class AuthToken(models.Model):
     key = models.CharField(max_length=40, primary_key=True)

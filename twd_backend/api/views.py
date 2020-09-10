@@ -1,13 +1,13 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
-from rest_framework.parsers import JSONParser
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from .models import User, Post, AuthToken
-from .serializers import UserSerializer, PostSerializer, RegisterUserSerializer
+from .serializers import UserSerializer, PostSerializer, RegisterUserSerializer, PostImageSerializer
 from .auth import AuthTokenAuthentication
 
 
@@ -24,13 +24,23 @@ class UserView(APIView):
 class RegisterView(APIView):
     def post(self, request, format=None):
         data = JSONParser().parse(request)
-        user_serialize = RegisterUserSerializer(data=data)
-        if(user_serialize.is_valid()):
+        user_serialized = RegisterUserSerializer(data=data)
+        if(user_serialized.is_valid()):
             saved_user = user_serialize.save()
             token = AuthToken.objects.get(user=saved_user)
             return Response({"token": token.key})
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class LoginView(APIView):
+    def post(self, request, format=None):
+        try:
+            data = JSONParser().parse(request)
+            user_serialized = User.objects.get(username=data["username"], password=data["password"])
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        token = AuthToken.objects.get(user=user_serialized)
+        return Response({"token": token.key})
 
 @api_view(['GET'])
 def retrieve_posts(request):
@@ -41,31 +51,43 @@ def retrieve_posts(request):
 class PostAddView(APIView):
     authentication_classes = [AuthTokenAuthentication]
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser]
 
     def post(self, request, format=None):
-        if(request.method == 'POST'):
-            data = JSONParser().parse(request)
-            data.update({"owner_id": request.user.id})
-            post_serialize = PostSerializer(data=data)
-            if(post_serialize.is_valid()):
-                post_serialize.save()
-                return Response(post_serialize.data)
-            else:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+        request.data.update({"owner_id": request.user.id})
+        post_serialized = PostSerializer(data=request.data)
+        if(post_serialized.is_valid()):
+            post_serialized.save()
+            return Response(post_serialized.data)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, format=None):
+        post = Post.objects.get(id=request.query_params["id"])
+        if(post.owner.id == request.user.id):
+            data = {"image": request.FILES["image"]}
+            post_image_serialized = PostImageSerializer(post, data=data)
+            if(post_image_serialized.is_valid()):
+                post_image_serialized.save()
+                return Response(post_image_serialized.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+        
 
 class PostUpdateView(APIView):
     authentication_classes = [AuthTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
-        if(request.method == 'POST'):
-            data = JSONParser().parse(request)
-            data.update({"owner_id": request.user.id})
-            post = Post.objects.get(id=data.get("post_id"))
+        data = JSONParser().parse(request)
+        data.update({"owner_id": request.user.id})
+        post = Post.objects.get(id=data.get("post_id"))
+        if(post.owner.id == request.user.id):
             data.pop("post_id")
             post_serialize = PostSerializer(post, data=data)
             if(post_serialize.is_valid()):
                 post_serialize.save()
                 return Response(post_serialize.data)
             else:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+                return Response({ "detail": "Something is missing" }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(status=status.HTTP_403_FORBIDDEN)

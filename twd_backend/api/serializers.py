@@ -2,6 +2,11 @@ from rest_framework import serializers
 from .models import User, Post, Tag, Category
 from slugify import slugify
 
+def addTag(i, name, category):
+    tag_slug = slugify(name)
+    tag, created = Tag.objects.get_or_create(slug=tag_slug, name=name, category=category)
+    i.tags.add(tag)
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -31,6 +36,8 @@ class PostSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True, many=False)
     tags = TagSerializer(many=True, read_only=True)
     category = CategorySerializer(many=False, read_only=True)
+    image = serializers.FileField(read_only=True)
+
 
     tags_name = serializers.ListField(child=serializers.CharField(write_only=True), write_only=True)
     owner_id = serializers.IntegerField(write_only=True)
@@ -38,7 +45,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'owner', 'owner_id', 'title', 'category', 'category_name', 'tags', 'tags_name', 'description', 'requirements', 'price']
+        fields = ['id', 'owner', 'owner_id', 'title', 'image', 'category', 'category_name', 'tags', 'tags_name', 'description', 'requirements', 'price']
 
     def create(self, validated_data):
         tag_data = []
@@ -50,11 +57,25 @@ class PostSerializer(serializers.ModelSerializer):
         validated_data.pop('category_name')
         post = Post.objects.create(**validated_data, category=category, owner=user)
         for tag_name in tag_data:
-            tag_slug = slugify(tag_name)
-            tag, created = Tag.objects.get_or_create(slug=tag_slug, name=tag_name, category=category)
-            post.tags.add(tag)
+            addTag(post, tag_name, category)
         return post
 
+    def update(self, instance, validated_data):
+        instance.title = validated_data.get("title", instance.title)
+        instance.description = validated_data.get("description", instance.description)
+        instance.requirements = validated_data.get("requirements", instance.requirements)
+        instance.price = validated_data.get("price", instance.price)
+        category = Category.objects.get(slug=validated_data.get("category_name"))
+        instance.category = category
+        instance.tags.clear()
+        for tag_name_raw in validated_data.get("tags_name"):
+            addTag(instance, str(tag_name_raw), category)
+        return instance
+
+class PostImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ['id', 'image']
 
 ### --> AUTH
 
@@ -62,3 +83,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'full_name', 'password', 'email', 'bio']
+
+class LoginUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', ]
