@@ -7,6 +7,7 @@ def addTag(i, name, category):
     tag, created = Tag.objects.get_or_create(slug=tag_slug, name=name, category=category)
     i.tags.add(tag)
 
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -21,9 +22,11 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'category', 'category_name']
 
 class PartialPostSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(many=False, read_only=True)
+
     class Meta:
         model = Post
-        fields = ['id', 'title', 'description', 'requirements', 'price']
+        fields = ['id', 'title', 'price', 'category']
 
 class UserSerializer(serializers.ModelSerializer):
     posts = PartialPostSerializer(many=True)
@@ -37,7 +40,7 @@ class PostSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     category = CategorySerializer(many=False, read_only=True)
     image = serializers.FileField(read_only=True)
-
+ 
 
     tags_name = serializers.ListField(child=serializers.CharField(write_only=True), write_only=True)
     owner_id = serializers.IntegerField(write_only=True)
@@ -69,7 +72,8 @@ class PostSerializer(serializers.ModelSerializer):
         instance.category = category
         instance.tags.clear()
         for tag_name_raw in validated_data.get("tags_name"):
-            addTag(instance, str(tag_name_raw), category)
+            addTag(instance, tag_name_raw, category)
+        instance.save()
         return instance
 
 class PostImageSerializer(serializers.ModelSerializer):

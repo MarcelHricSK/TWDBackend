@@ -2,14 +2,14 @@ from django.db import models
 from rest_framework.authtoken.models import Token
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
 from twd_backend import settings
 
 import datetime
-
 import binascii
 import os
 
-# Create your models here.
+# User
 class User(models.Model):
     username = models.CharField(max_length=35)
     full_name = models.CharField(max_length=70)
@@ -22,10 +22,11 @@ class User(models.Model):
 
     def __str__(self):
         return self.username
-        
+
+# Post
 class Category(models.Model):
-    name = models.CharField(max_length=254, default="")
-    slug = models.CharField(max_length=50, default="")
+    name = models.CharField(max_length=254)
+    slug = models.CharField(max_length=50)
 
     class Meta:
         verbose_name_plural = "Categories"
@@ -34,8 +35,8 @@ class Category(models.Model):
         return self.name
 
 class Tag(models.Model):
-    name = models.CharField(max_length=254, default="")
-    slug = models.CharField(max_length=50, default="", unique=True)
+    name = models.CharField(max_length=254)
+    slug = models.CharField(max_length=50, unique=True)
     category = models.ForeignKey(Category, related_name="tags", on_delete=models.CASCADE)
 
     def __str__(self):

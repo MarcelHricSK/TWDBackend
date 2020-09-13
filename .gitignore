@@ -4,3 +4,5 @@ Pipfile.lock
 *.code-workspace
 
 .vscode
+
+/files/*
