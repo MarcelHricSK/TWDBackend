@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Post, Tag, Category
+from .models import User, Post, Tag, Category, Comment
 from slugify import slugify
 
 def addTag(i, name, category):
@@ -28,19 +28,31 @@ class PartialPostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ['id', 'title', 'price', 'category']
 
+
 class UserSerializer(serializers.ModelSerializer):
     posts = PartialPostSerializer(many=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'full_name', 'email', 'posts', 'bio']
+        fields = ['id', 'username', 'full_name', 'email', 'phone', 'is_verified', 'posts', 'bio']
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(many=False, read_only=True)
+    post = PartialPostSerializer(read_only=True)
+
+    post_id = serializers.IntegerField(write_only=True)
+    user_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'user_id', 'post', 'post_id', 'rating', 'content']
 
 class PostSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True, many=False)
     tags = TagSerializer(many=True, read_only=True)
     category = CategorySerializer(many=False, read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
     image = serializers.FileField(read_only=True)
- 
 
     tags_name = serializers.ListField(child=serializers.CharField(write_only=True), write_only=True)
     owner_id = serializers.IntegerField(write_only=True)
@@ -48,7 +60,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'owner', 'owner_id', 'title', 'image', 'category', 'category_name', 'tags', 'tags_name', 'description', 'requirements', 'price']
+        fields = ['id', 'owner', 'owner_id', 'title', 'image', 'category', 'category_name', 'tags', 'tags_name', 'description', 'requirements', 'comments', 'price']
 
     def create(self, validated_data):
         tag_data = []
@@ -91,4 +103,4 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 class LoginUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', ]
+        fields = ['id',]

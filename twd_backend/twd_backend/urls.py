@@ -19,4 +19,5 @@ urlpatterns = [
     path('api/posts/search', Api.SearchPosts.as_view()),
     path('api/posts/add', Api.PostAddView.as_view()),
     path('api/posts/update', Api.PostUpdateView.as_view()),
+    path('api/posts/comment', Api.CommentPost.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

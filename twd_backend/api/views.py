@@ -9,13 +9,14 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from .models import User, Post, AuthToken
-from .serializers import UserSerializer, PostSerializer, RegisterUserSerializer, PostImageSerializer
+from .serializers import UserSerializer, PostSerializer, RegisterUserSerializer, PostImageSerializer, CommentSerializer
 from .auth import AuthTokenAuthentication
 
 # Helpers
 def throw(error):
     return Response(status=error)
 
+# User AUTH
 class RegisterView(APIView):
     def post(self, request, format=None):
         data = JSONParser().parse(request)
@@ -38,11 +39,17 @@ class LoginView(APIView):
         return Response({"token": token.key})
 
 class UserView(APIView):
+    def get(self, request, format=None):
+        users = User.objects.all()
+        user_serialized = UserSerializer(users, many=True)
+        return Response(user_serialized.data)
+        
+class DetailedUserView(APIView):
     authentication_classes = [AuthTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        users = User.objects.all()
+        users = User.objects.get(id=request.user.id)
         user_serialized = UserSerializer(users, many=True)
         return Response(user_serialized.data)
 
@@ -61,10 +68,24 @@ class SearchPosts(APIView):
         if(request.GET.get("priceMin")):
             posts = posts.filter(price__gte=int(request.GET["priceMin"]))  
         if(request.GET.get("priceMax")):
-            posts = posts.filter(price__lte=int(request.GET["priceMax"]))  
+            posts = posts.filter(price__lte=int(request.GET["priceMax"]))
         posts_serialized = PostSerializer(posts, many=True)
         return Response(posts_serialized.data)
 
+class CommentPost(APIView):
+    authentication_classes = [AuthTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        request.data.update({"user_id": request.user.id})
+        comment_serialized = CommentSerializer(data=request.data) 
+        if(comment_serialized.is_valid()):
+            comment_serialized.save()
+            return Response(comment_serialized.data, status=status.HTTP_200_OK)
+        else:
+            print(comment_serialized.errors)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+# Posts AUTH
 class PostAddView(APIView):
     authentication_classes = [AuthTokenAuthentication]
     permission_classes = [IsAuthenticated]

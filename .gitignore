@@ -2,7 +2,7 @@ Pipfile
 Pipfile.lock
 
 *.code-workspace
-
 .vscode
 
-/files/*
+twd_backend/files/*
+__pycache__/
